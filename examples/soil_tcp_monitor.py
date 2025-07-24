@@ -144,8 +144,10 @@ class SoilAndAirMonitor:
         try:
             soil_data = self.soil_sensor.read_composite("all")
 
+            soild_temp_diff = os.environ.get("SOIL_TEMP_DIFF", 0)
+
             # 处理温度误差
-            # soil_data["temperature"] = soil_data["temperature"]
+            soil_data["temperature"] = soil_data["temperature"] + soild_temp_diff
             logger.info(
                 f"Soil Data: "
                 f"Moisture={soil_data['moisture']}%, "
@@ -160,8 +162,10 @@ class SoilAndAirMonitor:
         try:
             air_data = self.air_sensor.read_composite("all")
 
+            air_temp_diff = os.environ.get("AIR_TEMP_DIFF", 0)
+
             # 处理温度误差
-            # air_data["temperature"] = air_data["temperature"]
+            air_data["temperature"] = air_data["temperature"] + air_temp_diff
             logger.info(
                 f"Air Data: "
                 f"Humidity={air_data['humidity']}%, "
