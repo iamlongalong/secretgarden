@@ -3,10 +3,10 @@ Sensor management and base sensor implementation.
 """
 import importlib
 import logging
-import os
+# import os
 from typing import Any, Dict, List, Optional, Type, Union
 
-import yaml
+# import yaml
 
 from .modbus import ModbusAdapter
 from .constants import ModbusDataType, RegisterType
@@ -167,27 +167,27 @@ class SensorManager:
         """
         self.config_dir = config_dir
         self.sensors: Dict[str, BaseSensor] = {}
-        self._load_configs()
+        # self._load_configs()
         
-    def _load_configs(self) -> None:
-        """Load all sensor configurations from config directory."""
-        if not os.path.exists(self.config_dir):
-            logger.warning(f"Config directory not found: {self.config_dir}")
-            return
+    # def _load_configs(self) -> None:
+    #     """Load all sensor configurations from config directory."""
+    #     if not os.path.exists(self.config_dir):
+    #         logger.warning(f"Config directory not found: {self.config_dir}")
+    #         return
             
-        for filename in os.listdir(self.config_dir):
-            if filename.endswith('.yaml'):
-                path = os.path.join(self.config_dir, filename)
-                try:
-                    with open(path, 'r') as f:
-                        config = yaml.safe_load(f)
-                    if not isinstance(config, dict):
-                        logger.error(f"Invalid config format in {filename}")
-                        continue
-                    sensor_type = config.get('type', 'base').lower()
-                    self.sensors[sensor_type] = self._create_sensor(sensor_type, config)
-                except Exception as e:
-                    logger.error(f"Error loading config {filename}: {e}")
+    #     for filename in os.listdir(self.config_dir):
+    #         if filename.endswith('.yaml'):
+    #             path = os.path.join(self.config_dir, filename)
+    #             try:
+    #                 with open(path, 'r') as f:
+    #                     config = yaml.safe_load(f)
+    #                 if not isinstance(config, dict):
+    #                     logger.error(f"Invalid config format in {filename}")
+    #                     continue
+    #                 sensor_type = config.get('type', 'base').lower()
+    #                 self.sensors[sensor_type] = self._create_sensor(sensor_type, config)
+    #             except Exception as e:
+    #                 logger.error(f"Error loading config {filename}: {e}")
                     
     def _create_sensor(
         self,
