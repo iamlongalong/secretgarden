@@ -27,6 +27,8 @@ A Python library for managing garden sensors using Modbus RTU protocol over both
 
 ## Installation
 
+### Standard Installation
+
 1. Create and activate a virtual environment:
 ```bash
 python3 -m venv .venv
@@ -40,6 +42,37 @@ source .venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 pip install -e .
 ```
+
+### Docker Installation
+
+1. Build the Docker image:
+```bash
+docker build -t secretgarden .
+```
+
+2. Run a container with environment variables:
+```bash
+docker run -e MQTT_HOST=things.shanhehuhai.cn -e MQTT_USERNAME=garden -e MQTT_PASSWORD=garden123 secretgarden
+```
+
+3. Using Docker Compose:
+```bash
+# Run the MQTT bridge service
+docker-compose up mqtt-bridge
+
+# Run the Modbus TCP service
+docker-compose up modbus-tcp
+
+# Run the soil TCP monitor service
+docker-compose up soil-tcp-monitor
+```
+
+4. Customizing environment variables:
+   - Copy `env.example` to `.env` and modify as needed
+   - Run with Docker Compose:
+   ```bash
+   docker-compose --env-file .env up mqtt-bridge
+   ```
 
 ## Quick Start
 
@@ -140,6 +173,8 @@ Check the `examples/` directory for more detailed examples:
 - `mqtt_bridge_example.py`: MQTT bridge implementation
 - `debug_tools_example.py`: Using debugging utilities
 - `sensor_monitor.py`: Continuous monitoring example
+- `modbus_tcp_example.py`: Using Modbus TCP
+- `soil_tcp_monitor.py`: Soil and air monitoring over TCP
 
 ## Development
 

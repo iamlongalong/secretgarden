@@ -7,12 +7,12 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
-from pymodbus.client import ModbusSerialClient
+from pymodbus.client import ModbusSerialClient, ModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
 from .constants import (CommType, DEFAULT_BYTESIZE, DEFAULT_MQTT_PORT,
                       DEFAULT_MQTT_QOS, DEFAULT_PARITY, DEFAULT_STOPBITS,
-                      DEFAULT_TIMEOUT, ModbusBaudRate, ModbusFunction,
+                      DEFAULT_TIMEOUT, DEFAULT_MODBUS_TCP_PORT, ModbusBaudRate, ModbusFunction,
                       ModbusDataType)
 from .mqtt import MqttClient
 from ..utils.modbus_tools import ModbusCommand, ModbusTools
@@ -64,18 +64,24 @@ class ModbusSerialSource(ModbusDataSource):
         bytesize: int = DEFAULT_BYTESIZE,
         parity: str = DEFAULT_PARITY,
         stopbits: int = DEFAULT_STOPBITS,
-        timeout: float = DEFAULT_TIMEOUT
+        timeout: float = DEFAULT_TIMEOUT,
+        client = None
     ):
         """Initialize serial data source."""
-        self.client = ModbusSerialClient(
-            port=port,
-            baudrate=baudrate.value,
-            bytesize=bytesize,
-            parity=parity,
-            stopbits=stopbits,
-            timeout=timeout,
-            framer='rtu'
-        )
+        if client is not None:
+            # 如果传入了预先配置的客户端，直接使用
+            self.client = client
+        else:
+            # 否则，创建新的客户端
+            self.client = ModbusSerialClient(
+                port=port,
+                baudrate=baudrate.value,
+                bytesize=bytesize,
+                parity=parity,
+                stopbits=stopbits,
+                timeout=timeout,
+                framer='rtu'
+            )
         
     def connect(self) -> bool:
         return self.client.connect()
@@ -155,7 +161,8 @@ class ModbusMqttSource(ModbusDataSource):
         host: str = "localhost",
         port: int = DEFAULT_MQTT_PORT,
         username: Optional[str] = None,
-        password: Optional[str] = None
+        password: Optional[str] = None,
+        mqtt_client = None
     ):
         """Initialize MQTT data source.
         
@@ -167,17 +174,24 @@ class ModbusMqttSource(ModbusDataSource):
             port: MQTT broker port
             username: Optional username for authentication
             password: Optional password for authentication
+            mqtt_client: Optional pre-configured MqttClient instance
         """
-        self.mqtt = MqttClient(
-            client_id=client_id,
-            host=host,
-            port=port,
-            username=username,
-            password=password
-        )
         self.request_topic = request_topic
         self.response_topic = response_topic
         self._last_response: Optional[bytes] = None
+        
+        if mqtt_client is not None:
+            # 如果传入了预先配置的MQTT客户端，直接使用
+            self.mqtt = mqtt_client
+        else:
+            # 否则，创建新的MQTT客户端
+            self.mqtt = MqttClient(
+                client_id=client_id,
+                host=host,
+                port=port,
+                username=username,
+                password=password
+            )
         
     def connect(self) -> bool:
         try:
@@ -294,26 +308,133 @@ class ModbusMqttSource(ModbusDataSource):
         """Handle MQTT response messages."""
         self._last_response = payload
 
+class ModbusTCPSource(ModbusDataSource):
+    """Modbus TCP data source."""
+    
+    def __init__(
+        self,
+        host: str,
+        port: int = DEFAULT_MODBUS_TCP_PORT,
+        timeout: float = DEFAULT_TIMEOUT,
+        client = None
+    ):
+        """Initialize TCP data source.
+        
+        Args:
+            host: TCP server host/IP
+            port: TCP server port (default: 502)
+            timeout: Connection timeout in seconds
+            client: Optional pre-configured ModbusTcpClient instance
+        """
+        if client is not None:
+            # 如果传入了预先配置的客户端，直接使用
+            self.client = client
+        else:
+            # 否则，创建新的客户端
+            self.client = ModbusTcpClient(
+                host=host,
+                port=port,
+                timeout=timeout
+            )
+        
+    def connect(self) -> bool:
+        return self.client.connect()
+        
+    def disconnect(self) -> None:
+        self.client.close()
+        
+    def read_registers(
+        self,
+        address: int,
+        count: int,
+        unit: int,
+        function_code: int = ModbusFunction.READ_HOLDING_REGISTERS
+    ) -> List[int]:
+        """Read registers from TCP device."""
+        try:
+            if function_code == ModbusFunction.READ_HOLDING_REGISTERS:
+                response = self.client.read_holding_registers(
+                    address=address,
+                    count=count,
+                    slave=unit
+                )
+            elif function_code == ModbusFunction.READ_INPUT_REGISTERS:
+                response = self.client.read_input_registers(
+                    address=address,
+                    count=count,
+                    slave=unit
+                )
+            else:
+                raise ValueError(f"Unsupported function code: {function_code}")
+                
+            if response and not response.isError():
+                return response.registers
+            raise ModbusException(f"Failed to read register {address}")
+        except Exception as e:
+            logger.error(f"Error reading register {address}: {e}")
+            raise
+            
+    def write_register(
+        self,
+        address: int,
+        value: int,
+        unit: int,
+        function_code: int = ModbusFunction.WRITE_SINGLE_REGISTER
+    ) -> None:
+        """Write register to TCP device."""
+        try:
+            if function_code == ModbusFunction.WRITE_SINGLE_REGISTER:
+                response = self.client.write_register(
+                    address=address,
+                    value=value,
+                    slave=unit
+                )
+            elif function_code == ModbusFunction.WRITE_MULTIPLE_REGISTERS:
+                response = self.client.write_registers(
+                    address=address,
+                    values=[value],
+                    slave=unit
+                )
+            else:
+                raise ValueError(f"Unsupported function code: {function_code}")
+                
+            if response and response.isError():
+                raise ModbusException(f"Failed to write register {address}")
+        except Exception as e:
+            logger.error(f"Error writing register {address}: {e}")
+            raise
+
 class ModbusAdapter:
     """Modbus protocol adapter supporting multiple data sources."""
     
     def __init__(
         self,
-        comm_type: CommType,
+        comm_type: CommType = None,
+        source: ModbusDataSource = None,
         **kwargs
     ):
         """Initialize Modbus adapter.
         
         Args:
-            comm_type: Communication type (SERIAL or MQTT)
+            comm_type: Communication type (SERIAL, MQTT, or TCP)
+            source: Optional pre-configured ModbusDataSource instance
             **kwargs: Additional arguments for data source
         """
-        if comm_type == CommType.SERIAL:
-            self.source = ModbusSerialSource(**kwargs)
-        elif comm_type == CommType.MQTT:
-            self.source = ModbusMqttSource(**kwargs)
+        if source is not None:
+            # 如果传入了预先配置的数据源，直接使用
+            self.source = source
+        elif comm_type is not None:
+            # 否则，根据通信类型创建对应的数据源
+            if comm_type == CommType.SERIAL:
+                self.source = ModbusSerialSource(**kwargs)
+            elif comm_type == CommType.MQTT:
+                self.source = ModbusMqttSource(**kwargs)
+            elif comm_type == CommType.TCP:
+                self.source = ModbusTCPSource(**kwargs)
+            else:
+                raise ValueError(f"Unsupported communication type: {comm_type}")
         else:
-            raise ValueError(f"Unsupported communication type: {comm_type}")
+            raise ValueError("Either comm_type or source must be provided")
             
     def connect(self) -> bool:
         """Connect to data source."""

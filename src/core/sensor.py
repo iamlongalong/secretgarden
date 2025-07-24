@@ -4,7 +4,7 @@ Sensor management and base sensor implementation.
 import importlib
 import logging
 import os
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
 import yaml
 
@@ -37,6 +37,7 @@ class BaseSensor:
         self.composite = config.get("composite", {})
         self.modbus = modbus
         self.unit_id = unit_id
+        self.decimal_places = 2  # Default to 2 decimal places
         
     def read_register(self, name: str) -> Any:
         """Read single register by name.
@@ -62,7 +63,13 @@ class BaseSensor:
         # Scale value
         if reg_type == ModbusDataType.INT16 and reg_signed and value > 32767:
             value -= 65536
-        return value * reg_scale
+        result = value * reg_scale
+        
+        # Format float values to specified decimal places
+        if isinstance(result, float):
+            result = round(result, self.decimal_places)
+            
+        return result
         
     def read_multiple(self, names: List[str]) -> Dict[str, Any]:
         """Read multiple registers by name.
@@ -100,13 +107,26 @@ class BaseSensor:
         # Parse based on custom function if specified
         if "parse" in comp_config:
             parse_func = getattr(self, comp_config["parse"])
-            return parse_func(values)
+            result = parse_func(values)
+            
+            # Format float values in result dictionary
+            for key, value in result.items():
+                if isinstance(value, float):
+                    result[key] = round(value, self.decimal_places)
+                    
+            return result
             
         # Default parsing
         result = {}
         for i, reg in enumerate(comp_config["regs"]):
             reg_name = f"register_{reg:04X}"
             result[reg_name] = values[i]
+            
+        # Format float values in result dictionary
+        for key, value in result.items():
+            if isinstance(value, float):
+                result[key] = round(value, self.decimal_places)
+                
         return result
         
     def _get_parser(self, parser_name: str):
@@ -125,6 +145,16 @@ class BaseSensor:
         except (ImportError, AttributeError) as e:
             logger.error(f"Failed to load parser {parser_name}: {e}")
             return lambda x: x
+            
+    def set_decimal_places(self, places: int) -> None:
+        """Set the number of decimal places for formatting float values.
+        
+        Args:
+            places: Number of decimal places (0-10)
+        """
+        if not 0 <= places <= 10:
+            raise ValueError("Decimal places must be between 0 and 10")
+        self.decimal_places = places
             
 class SensorManager:
     """Manager for sensor instances."""

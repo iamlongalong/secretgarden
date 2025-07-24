@@ -1,0 +1,55 @@
+version: '3'
+
+services:
+  # MQTT Bridge Service
+  mqtt-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: python -m examples.mqtt_bridge_example
+    environment:
+      - MQTT_HOST=things.shanhehuhai.cn
+      - MQTT_PORT=1883
+      - MQTT_USERNAME=garden
+      - MQTT_PASSWORD=garden123
+    volumes:
+      - ./config:/app/config
+    networks:
+      - garden-network
+
+  # Modbus TCP Service
+  modbus-tcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: python -m examples.modbus_tcp_example
+    environment:
+      - MODBUS_HOST=192.168.2.4
+      - MODBUS_PORT=502
+      - MODBUS_UNIT_ID=1
+    volumes:
+      - ./config:/app/config
+    networks:
+      - garden-network
+
+  # Soil TCP Monitor Service
+  soil-tcp-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: python -m examples.soil_tcp_monitor
+    environment:
+      - MODBUS_HOST=192.168.2.4
+      - MODBUS_PORT=502
+      - MODBUS_UNIT_ID=1
+    volumes:
+      - ./config:/app/config
+    networks:
+      - garden-network
+
+networks:
+  garden-network:
+    driver: bridge 

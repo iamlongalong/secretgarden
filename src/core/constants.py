@@ -9,6 +9,7 @@ class CommType(Enum):
     """Communication type enumeration."""
     SERIAL = auto()
     MQTT = auto()
+    TCP = auto()
 
 # Modbus constants
 class ModbusBaudRate(Enum):
@@ -50,12 +51,13 @@ class Unit(Enum):
     LUX = "lux"  # For light intensity
 
 # Default values
-DEFAULT_TIMEOUT: Final[float] = 5.0
+DEFAULT_TIMEOUT: Final[float] = 10.0
 DEFAULT_BYTESIZE: Final[int] = 8
 DEFAULT_PARITY: Final[str] = 'N'
 DEFAULT_STOPBITS: Final[int] = 1
 DEFAULT_MQTT_PORT: Final[int] = 1883
 DEFAULT_MQTT_QOS: Final[int] = 1
+DEFAULT_MODBUS_TCP_PORT: Final[int] = 502
 
 # Register addresses
 class SoilRegister:
