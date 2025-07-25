@@ -144,9 +144,10 @@ class SoilAndAirMonitor:
         try:
             soil_data = self.soil_sensor.read_composite("all")
 
+            
             soild_temp_diff = os.environ.get("SOIL_TEMP_DIFF", 0)
-
             # 处理温度误差
+            ori_soild_temp = soil_data["temperature"] 
             soil_data["temperature"] = soil_data["temperature"] + soild_temp_diff
             logger.info(
                 f"Soil Data: "
@@ -154,6 +155,7 @@ class SoilAndAirMonitor:
                 f"Temperature={soil_data['temperature']}°C, "
                 f"EC={soil_data['ec']}us/cm, "
                 f"pH={soil_data['ph']}"
+                f"ORI_TEMP={ori_soild_temp}°C"
             )
         except Exception as e:
             logger.error(f"Error reading soil sensor data: {e}")
@@ -165,6 +167,7 @@ class SoilAndAirMonitor:
             air_temp_diff = os.environ.get("AIR_TEMP_DIFF", 0)
 
             # 处理温度误差
+            ori_air_temp = air_data["temperature"] 
             air_data["temperature"] = air_data["temperature"] + air_temp_diff
             logger.info(
                 f"Air Data: "
@@ -172,6 +175,7 @@ class SoilAndAirMonitor:
                 f"Temperature={air_data['temperature']}°C, "
                 f"CO2={air_data['co2']}ppm, "
                 f"Light={air_data['light']}lux"
+                f"ORI_TEMP={ori_air_temp}°C"
             )
         except Exception as e:
             logger.error(f"Error reading air sensor data: {e}")
