@@ -148,7 +148,7 @@ class SoilAndAirMonitor:
             soild_temp_diff = os.environ.get("SOIL_TEMP_DIFF", 0)
             # 处理温度误差
             ori_soild_temp = soil_data["temperature"] 
-            soil_data["temperature"] = soil_data["temperature"] + soild_temp_diff
+            soil_data["temperature"] = soil_data["temperature"] + float(soild_temp_diff)
             logger.info(
                 f"Soil Data: "
                 f"Moisture={soil_data['moisture']}%, "
@@ -168,7 +168,7 @@ class SoilAndAirMonitor:
 
             # 处理温度误差
             ori_air_temp = air_data["temperature"] 
-            air_data["temperature"] = air_data["temperature"] + air_temp_diff
+            air_data["temperature"] = air_data["temperature"] + float(air_temp_diff)
             logger.info(
                 f"Air Data: "
                 f"Humidity={air_data['humidity']}%, "
